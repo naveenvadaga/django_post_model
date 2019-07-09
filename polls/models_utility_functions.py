@@ -22,21 +22,17 @@ def create_post(user_id, post_content):
 
 def get_post(post_id):
     post = {}
+    print(len(connection.queries))
 
     posted = Post.objects.filter(id=post_id).select_related('person')
 
     reactions_post = React.objects.filter(post_id=post_id).values('react_type')
-    commented = Comment.objects.filter(post_id=1).select_related('person').prefetch_related(
+    commented = Comment.objects.filter(post_id=post_id).select_related('person').prefetch_related(
         Prefetch('comment_set', to_attr='replies'))
     posted = posted[0]
 
     post["post_id"] = posted.id
-    post["posted by"] = {"user_id": posted.person_id,
-
-                         "name": posted.person.username,
-                         "profile_pic_url": posted.person.profilePicUrl
-
-                         }
+    post["posted_by"] = posted.person
     post["posted_at"] = posted.posted_at.strftime("%m/%d/%Y, %H:%M:%S")
     post["post_content"] = posted.post_content
 
@@ -47,7 +43,7 @@ def get_post(post_id):
 
     post["reactions"] = {
         "count": len(json_comment_react),
-        "type": json_comment_react
+        "types": json_comment_react
 
     }
     post["comments"] = []
@@ -65,21 +61,21 @@ def get_post(post_id):
     reply_reaction = React.objects.filter(comment_id__in=reply_id).values('comment_id', 'react_type')
     comment_reactions = {}
     for a in comment_reaction:
-        if a['comment_id'] in comment_reactions:
-            comment_reactions[int(a['comment_id'])] = {a['react_type']}
-        else:
+        if int(a['comment_id']) in comment_reactions:
             comment_reactions[int(a['comment_id'])].add(a['react_type'])
+        else:
+            comment_reactions[int(a['comment_id'])] = {a['react_type']}
 
     reply_reactions = {}
 
     for a in reply_reaction:
         if a['comment_id'] in reply_reactions:
-            reply_reactions[int(a['comment_id'])] = {a['react_type']}
-        else:
             reply_reactions[int(a['comment_id'])].add(a['react_type'])
+        else:
+            reply_reactions[int(a['comment_id'])] = {a['react_type']}
 
     for comment in commented:
-
+        rep = []
         for reply in comment.replies:
             # print(reply.id)
             count = 0
@@ -90,54 +86,46 @@ def get_post(post_id):
 
             rep.append({
                 "comment_id": reply.id,
-                "commenter": {
-                    "user_id": reply.person_id,
-                    "name": reply.person.username,
-                    "profile_pic_url": reply.person.profilePicUrl
-                },
+                "commenter": reply.person,
                 "commented_at": reply.comment_at.strftime("%m/%d/%Y, %H:%M:%S"),
                 "comment_content": reply.comment_content,
                 "reactions": {
                     "count": count,
-                    "type": s
+                    "types": s
                 }
 
             })
         ccount = 0
         cs = {}
         if comment.id in comment_reactions:
-            ccount = len(comment_reactions[reply.id])
-            cs = comment_reactions[reply.id]
+            ccount = len(comment_reactions[int(comment.id)])
+            cs = comment_reactions[comment.id]
 
         post["comments"].append({
-            "comments_id": comment.id,
-            "commenter": {
-                "user_id": comment.person_id,
-                "name": comment.person.username,
-                "profile_pic_url": comment.person.profilePicUrl
-            },
+            "comment_id": comment.id,
+            "commenter": comment.person,
             "commented_at": comment.comment_at.strftime("%m/%d/%Y, %H:%M:%S"),
             "comment_content": comment.comment_content,
             "reactions": {
                 "count": ccount,
-                "type": cs
+                "types": cs
             },
             "replies_count": len(comment.replies),
             "replies": rep
 
         })
 
-    post['comment_count'] = len(commented)
+    post['comments_count'] = len(commented)
     print(len(connection.queries))
 
     return post
 
 
 def get_user_posts(user_id):
-    posts_with_userid = Post.objects.filter(person__user_id=user_id).values('id')
+    posts_with_userid = Post.objects.filter(person_id=user_id).values('id')
     user_post = []
     for post in posts_with_userid:
-        user_post.append(Post.get_post(post['id']))
+        user_post.append(get_post(post['id']))
     return user_post
 
 
@@ -148,7 +136,7 @@ def delete_post(post_id):
 # comments
 def add_comment(post_id, comment_user_id, comment_text):
     post_with_postId = Post.objects.get(id=post_id)
-    person_with_id = Person.objects.get(user_id=comment_user_id)
+    person_with_id = Person.objects.get(id=comment_user_id)
     comment_created = Comment(post=post_with_postId, person=person_with_id, comment_content=comment_text)
     comment_created.save()
     return comment_created
@@ -157,7 +145,7 @@ def add_comment(post_id, comment_user_id, comment_text):
 def reply_to_comment(comment_id, reply_user_id, reply_text):
     print("on 1")
     comment_with_commentId = Comment.objects.get(id=comment_id)
-    person_with_id = Person.objects.get(user_id=reply_user_id)
+    person_with_id = Person.objects.get(id=reply_user_id)
     print("on 2")
 
     if comment_with_commentId.reply == None:
@@ -179,11 +167,7 @@ def get_replies_for_comment(comment_id):
     for reply in replys:
         dict = {}
         dict['comment_id'] = reply.id
-        dict['commenter'] = {
-            "user_id": reply.person.user_id,
-            "name": reply.person.name,
-            "profile_pic_url": reply.person.profilePicUrl
-        }
+        dict['commenter'] = reply.person
         dict['commented_at'] = reply.comment_at.strftime("%Y/%m/%d, %H:%M:%S")
         dict['comment_content'] = reply.comment_content
         json_reply.append(dict)
@@ -194,14 +178,14 @@ def get_replies_for_comment(comment_id):
 
 # react
 def react_to_post(user_id, post_id, reaction_type):
-    person_with_id = Person.objects.get(user_id=user_id)
+    person_with_id = Person.objects.get(id=user_id)
     post_with_postId = Post.objects.get(id=post_id)
     try:
-        reacted = React.objects.get(person=person_with_id, post=post_with_postId).values('id', 'react_type')
-        if reacted[0]['react_type'] != reaction_type:
-            React.objects.get(id=reacted[0]['id']).update(react_type=reaction_type)
+        reacted = React.objects.get(person=person_with_id, post=post_with_postId)
+        if reacted.react_type != reaction_type:
+            React.objects.filter(id=reacted.id).update(react_type=reaction_type)
         else:
-            React.objects.get(id=reacted[0]['id']).delete()
+            React.objects.get(id=reacted.id).delete()
             return None
     except ObjectDoesNotExist:
         react_created = React(react_type=reaction_type, person=person_with_id, post=post_with_postId)
@@ -210,15 +194,14 @@ def react_to_post(user_id, post_id, reaction_type):
 
 
 def react_to_comment(user_id, comment_id, reaction_type):
-    person_with_id = Person.objects.get(user_id=user_id)
+    person_with_id = Person.objects.get(id=user_id)
     comment_with_commentId = Comment.objects.get(id=comment_id)
     try:
-        reacted = React.objects.get(person=person_with_id, comment=comment_with_commentId).values('id',
-                                                                                                  'react_type')
-        if reacted[0]['react_type'] != reaction_type:
-            React.objects.get(id=reacted[0]['id']).update(react_type=reaction_type)
+        reacted = React.objects.get(person=person_with_id, comment=comment_with_commentId)
+        if reacted.react_type != reaction_type:
+            React.objects.filter(id=reacted.id).update(react_type=reaction_type)
         else:
-            React.objects.get(id=reacted[0]['id']).delete()
+            React.objects.get(id=reacted.id).delete()
             return None
     except ObjectDoesNotExist:
         react_created = React(react_type=reaction_type, person=person_with_id, comment=comment_with_commentId)
@@ -243,7 +226,7 @@ def get_posts_with_more_positive_reactions():
 def get_posts_reacted_by_user(user_id):
     posts_reacted_by_users = []
 
-    posts_reacted_by_user = React.objects.filter(react__person_id=user_id).values('id')
+    posts_reacted_by_user = React.objects.filter(person_id=user_id).values('id')
     for posts in posts_reacted_by_user:
         posts_reacted_by_users.append(posts['id'])
 
@@ -257,9 +240,9 @@ def get_reactions_to_post(post_id):
     reactions = reactions[0].reacts
     for reaction in reactions:
         reactions_to_posts.append({
-            "user_id": reaction.person_id,
-            "name": reaction.person.username,
-            "profile_pic": reaction.person.profilePicUrl,
+            "id": reaction.person_id,
+            "username": reaction.person.username,
+            "profilePicUrl": reaction.person.profilePicUrl,
             "reaction": reaction.react_type
         })
 
