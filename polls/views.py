@@ -66,40 +66,22 @@ def react_list(request, format=None):
 @api_view(['Get'])
 def get_post(request, pk):
     post = {}
-    post_id=pk
+    post_id = pk
     posted = Post.objects.filter(id=post_id).select_related('person')
-
     reactions_post = React.objects.filter(post_id=post_id).values('react_type')
     commented = Comment.objects.filter(post_id=1).select_related('person').prefetch_related(
         Prefetch('comment_set', to_attr='replies'))
     posted = posted[0]
-
-    serializer=GetPostSerializer(posted)
-
-    return Response(serializer.data)
-
-
-    post["post_id"] = posted.id
-    post["posted by"] = {"user_id": posted.person_id,
-
-                         "name": posted.person.username,
-                         "profile_pic_url": posted.person.profilePicUrl
-
-                         }
-    post["posted_at"] = posted.posted_at.strftime("%m/%d/%Y, %H:%M:%S")
-    post["post_content"] = posted.post_content
 
     json_comment_react = []
     for reac in reactions_post:
         json_comment_react.append(reac['react_type'])
     json_comment_react = set(json_comment_react)
 
-    post["reactions"] = {
-        "count": len(json_comment_react),
-        "type": json_comment_react
-
-    }
-    post["comments"] = []
+    json_comment_react = []
+    for reac in reactions_post:
+        json_comment_react.append(reac['react_type'])
+    json_comment_react = set(json_comment_react)
 
     rep = []
     comment_id = []
@@ -127,6 +109,8 @@ def get_post(request, pk):
         else:
             reply_reactions[int(a['comment_id'])].add(a['react_type'])
 
+    comments_serializers = []
+    comment_serializer = {}
     for comment in commented:
 
         for reply in comment.replies:
@@ -138,17 +122,13 @@ def get_post(request, pk):
                 s = reply_reactions[reply.id]
 
             rep.append({
-                "comment_id": reply.id,
-                "commenter": {
-                    "user_id": reply.person_id,
-                    "name": reply.person.username,
-                    "profile_pic_url": reply.person.profilePicUrl
-                },
-                "commented_at": reply.comment_at.strftime("%m/%d/%Y, %H:%M:%S"),
+                "id": reply.id,
+                "person": reply.person,
+                "comment_at": reply.comment_at.strftime("%m/%d/%Y, %H:%M:%S"),
                 "comment_content": reply.comment_content,
                 "reactions": {
                     "count": count,
-                    "type": s
+                    "types": s
                 }
 
             })
@@ -158,26 +138,30 @@ def get_post(request, pk):
             ccount = len(comment_reactions[reply.id])
             cs = comment_reactions[reply.id]
 
-        post["comments"].append({
-            "comments_id": comment.id,
-            "commenter": {
-                "user_id": comment.person_id,
-                "name": comment.person.username,
-                "profile_pic_url": comment.person.profilePicUrl
-            },
-            "commented_at": comment.comment_at.strftime("%m/%d/%Y, %H:%M:%S"),
+        comments_serializers.append({
+            "id": comment.id,
+            "person": comment.person,
+            "comment_at": comment.comment_at.strftime("%m/%d/%Y, %H:%M:%S"),
             "comment_content": comment.comment_content,
             "reactions": {
                 "count": ccount,
-                "type": cs
+                "types": cs
             },
             "replies_count": len(comment.replies),
             "replies": rep
 
         })
 
+    serializer = GetPostSerializer(
+        {"id": posted.person_id, 'post_content': posted.post_content, 'posted_at': posted.posted_at,
+         "reactions": {
+             "count": len(json_comment_react),
+             "types": json_comment_react
+         },
+         'person': posted.person, "comments": comments_serializers, 'reacts': json_comment_react,
+         'comments_count': len(commented)})
 
-
+    return Response(serializer.data)
 
     post['comment_count'] = len(commented)
     print(len(connection.queries))
