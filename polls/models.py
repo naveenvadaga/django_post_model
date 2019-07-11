@@ -1,8 +1,5 @@
 from django.db import models
 from enum import Enum
-from django.db.models import Prefetch
-from django.db import connection
-from django.contrib.auth.models import User
 from django.contrib.auth.models import AbstractUser
 from django.conf import settings
 
@@ -24,7 +21,8 @@ class Person(AbstractUser):
 
 
 class React(models.Model):
-    react_type = models.CharField(max_length=10, choices=[(reaction.value, reaction.value) for reaction in ReactionChoice])
+    react_type = models.CharField(max_length=10,
+                                  choices=[(reaction.value, reaction.value) for reaction in ReactionChoice])
     person = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     post = models.ForeignKey('Post', on_delete=models.CASCADE, null=True)
     comment = models.ForeignKey('Comment', on_delete=models.CASCADE, null=True)
@@ -42,5 +40,3 @@ class Post(models.Model):
     person = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     posted_at = models.DateTimeField(auto_now_add=True, blank=True)
     post_content = models.CharField(max_length=100)
-
-

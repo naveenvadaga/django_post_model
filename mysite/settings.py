@@ -29,6 +29,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'oauth2_provider',
     'rest_framework',
     'polls.apps.PollsConfig',
     'django.contrib.admin',
@@ -114,5 +115,15 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/2.2/howto/static-files/
 
 STATIC_URL = '/static/'
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'oauth2_provider.contrib.rest_framework.OAuth2Authentication',
+    )
+}
+OAUTH2_PROVIDER = {
+
+    'SCOPES': {'read': 'Read scope', 'write': 'Write scope' , 'another': 'another'}
+}
 
 AUTH_USER_MODEL = 'polls.Person'

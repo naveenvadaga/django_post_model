@@ -2,19 +2,22 @@ from .models import *
 from django.db.models import Q
 from django.db.models import Count
 from django.core.exceptions import ObjectDoesNotExist
+from django.db.models import Prefetch
+from django.db import connection
+from django.contrib.auth.models import User
 
 
 # person
 
 def create(person_name):
-    p = Person(name=person_name)
+    p = Person(username=person_name)
     p.save()
     return p
 
 
 # post
 def create_post(user_id, post_content):
-    person_with_id = Person.objects.get(user_id=user_id)
+    person_with_id = Person.objects.get(id=user_id)
     post_created = Post(person=person_with_id, post_content=post_content)
     post_created.save()
     return post_created
@@ -122,7 +125,7 @@ def get_post(post_id):
 
 
 def get_user_posts(user_id):
-    posts_with_userid = Post.objects.filter(person_id=user_id).values('id')
+    posts_with_userid = Post.objects.filter(person=user_id).values('id')
     user_post = []
     for post in posts_with_userid:
         user_post.append(get_post(post['id']))
@@ -178,33 +181,29 @@ def get_replies_for_comment(comment_id):
 
 # react
 def react_to_post(user_id, post_id, reaction_type):
-    person_with_id = Person.objects.get(id=user_id)
-    post_with_postId = Post.objects.get(id=post_id)
     try:
-        reacted = React.objects.get(person=person_with_id, post=post_with_postId)
+        reacted = React.objects.get(person=user_id, post_id=post_id)
         if reacted.react_type != reaction_type:
             React.objects.filter(id=reacted.id).update(react_type=reaction_type)
         else:
             React.objects.get(id=reacted.id).delete()
             return None
     except ObjectDoesNotExist:
-        react_created = React(react_type=reaction_type, person=person_with_id, post=post_with_postId)
+        react_created = React(react_type=reaction_type, person=user_id, post_id=post_id)
         react_created.save()
         return react_created
 
 
 def react_to_comment(user_id, comment_id, reaction_type):
-    person_with_id = Person.objects.get(id=user_id)
-    comment_with_commentId = Comment.objects.get(id=comment_id)
     try:
-        reacted = React.objects.get(person=person_with_id, comment=comment_with_commentId)
+        reacted = React.objects.get(person=user_id, comment_id=comment_id)
         if reacted.react_type != reaction_type:
             React.objects.filter(id=reacted.id).update(react_type=reaction_type)
         else:
             React.objects.get(id=reacted.id).delete()
             return None
     except ObjectDoesNotExist:
-        react_created = React(react_type=reaction_type, person=person_with_id, comment=comment_with_commentId)
+        react_created = React(react_type=reaction_type, person=user_id, comment_id=comment_id)
         react_created.save()
         return react_created
 
@@ -226,7 +225,7 @@ def get_posts_with_more_positive_reactions():
 def get_posts_reacted_by_user(user_id):
     posts_reacted_by_users = []
 
-    posts_reacted_by_user = React.objects.filter(person_id=user_id).values('id')
+    posts_reacted_by_user = React.objects.filter(person=user_id).values('id')
     for posts in posts_reacted_by_user:
         posts_reacted_by_users.append(posts['id'])
 

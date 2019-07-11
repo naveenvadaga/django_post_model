@@ -2,7 +2,7 @@ from rest_framework import serializers
 from .models import *
 
 
-class listSerializer(serializers.ModelSerializer):
+class ListSerializer(serializers.Serializer):
     list = serializers.ListField(
         child=serializers.CharField()
     )
@@ -11,15 +11,15 @@ class listSerializer(serializers.ModelSerializer):
         fields = ('list',)
 
 
-class countSerializer(serializers.Serializer):
+class CountSerializer(serializers.Serializer):
     count = serializers.IntegerField()
 
     class Meta:
         fields = ('count',)
 
 
-class dictSerializer(serializers.Serializer):
-    list = serializers.DictField(
+class DictSerializer(serializers.Serializer):
+    dict = serializers.DictField(
         child=serializers.CharField()
     )
 
@@ -57,19 +57,19 @@ class ReactDeserializer(serializers.ModelSerializer):
     # count=serializers.IntegerField()
     class Meta:
         model = React
-        fields = ('react_type')
+        fields = ('react_type',)
 
 
 class ReactSerializer(serializers.ModelSerializer):
     class Meta:
         model = React
-        fields = ('__all__')
+        fields = '__all__'
 
 
 class GetCommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
-        fields = ('__all__')
+        fields = '__all__'
 
 
 #### for get_ post ############
