@@ -119,8 +119,8 @@ def get_post(post_id):
         })
 
     post['comments_count'] = len(commented)
-    print(len(connection.queries))
-
+    print(post)
+    print("fds")
     return post
 
 
@@ -146,14 +146,14 @@ def add_comment(post_id, comment_user_id, comment_text):
 
 
 def reply_to_comment(comment_id, reply_user_id, reply_text):
-    print("on 1")
     comment_with_commentId = Comment.objects.get(id=comment_id)
     person_with_id = Person.objects.get(id=reply_user_id)
-    print("on 2")
 
     if comment_with_commentId.reply == None:
         reply_created = Comment(person=person_with_id, comment_content=reply_text, reply=comment_with_commentId)
+        print("on 1")
     else:
+        print("on 2")
         comment_of_reply = Comment.objects.get(id=comment_with_commentId.reply.id)
         reply_created = Comment(person=person_with_id, comment_content=reply_text, reply=comment_of_reply)
 

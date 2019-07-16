@@ -9,6 +9,7 @@ urlpatterns = [
     path('users/', views.person_list),
     path('comments/', views.comment_list),
     path('reacts/', views.react_list),
+
     path('posts/<int:post_id>', views.get_post_),
     path('comments/<int:post_id>/replies', views.get_replies_for_comment_view),
     path('post', views.create_post_view),

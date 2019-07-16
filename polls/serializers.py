@@ -135,7 +135,7 @@ class GetRepliesForPostSerializer(serializers.ModelSerializer):
 
 ##### create post
 
-class CreatePostDeserializer(serializers.ModelSerializer):
+class                           CreatePostDeserializer(serializers.ModelSerializer):
     person_id = serializers.IntegerField()
     post_content = serializers.CharField()
 
